@@ -55,6 +55,7 @@ import {
     DEFAULT_DTYPE_SUFFIX_MAPPING,
     isWebGpuFp16Supported,
 } from './utils/dtypes.js';
+import { DEVICE_TYPES, Device } from "./utils/devices.js";
 
 import {
     Callable,
@@ -148,12 +149,13 @@ const MODEL_CLASS_TO_NAME_MAPPING = new Map();
 async function getSession(pretrained_model_name_or_path, fileName, options) {
     const custom_config = options.config?.['transformers.js_config'] ?? {};
     let device = options.device ?? custom_config.device;
+
     if (device && typeof device !== 'string') {
         if (device.hasOwnProperty(fileName)) {
             device = device[fileName];
         } else {
             console.warn(`device not specified for "${fileName}". Using the default device.`);
-            device = null;
+            device = Device.auto;
         }
     }
 
@@ -800,8 +802,8 @@ export class PreTrainedModel extends Callable {
         revision = 'main',
         model_file_name = null,
         subfolder = 'onnx',
-        device = null,
-        dtype = null,
+        device = DEVICE_TYPES.auto,
+        dtype = DATA_TYPES.fp32,
         use_external_data_format = null,
         session_options = {},
     } = {}) {
@@ -826,6 +828,7 @@ export class PreTrainedModel extends Callable {
         config = options.config = await AutoConfig.from_pretrained(pretrained_model_name_or_path, options);
 
         let info;
+        console.log("INITIAL OPTIONS: ", options);
         if (modelType === MODEL_TYPES.DecoderOnly) {
             info = await Promise.all([
                 constructSessions(pretrained_model_name_or_path, {
